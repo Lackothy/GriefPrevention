@@ -382,6 +382,12 @@ public class GriefPrevention extends JavaPlugin
 		    new IgnoreLoaderThread(player.getUniqueId(), this.dataStore.getPlayerData(player.getUniqueId()).ignoredPlayers).start();
 		}
 		
+		if(this.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI"))
+		{
+		    me.ryanhamshire.GriefPrevention.placeholders.PlaceholderHook.register(this);
+		    AddLogEntry("Registered PlaceholderAPI placeholders (%griefprevention_...%).");
+		}
+		
 		AddLogEntry("Boot finished.");
 	}
 	
