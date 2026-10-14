@@ -1,0 +1,85 @@
+name: Build
+
+# Runs the same build a contributor runs locally (compile, tests)
+# on every pull request and every push, so a broken build or a failing test
+# is caught before it reaches a server. A push also publishes a release,
+# build-<commit>, with the plugin's jar, which the iManager panel reads to
+# install and update the plugin. Nothing here reaches a server itself.
+on:
+  pull_request:
+    # '1.8' is quoted deliberately. Unquoted it is a YAML float, so the filter
+    # would read as the number 1.8 and never match the branch name. 1.8 is
+    # this repo's only branch.
+    branches: ['1.8']
+  push:
+    branches: ['1.8']
+
+permissions:
+  contents: read
+
+# A new push to the same pull request makes the run for the old one moot. A
+# push is a release of its own and always runs to the end.
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          # The code compiles with --release 8; the JDK the other plugins
+          # build with still supports it.
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          # The wrapper is not committed (gradle/ is gitignored), so the
+          # version it would have named is pinned here instead.
+          gradle-version: '9.6.1'
+
+      - name: Build
+        run: gradle build --console=plain
+
+      - name: Keep the jar
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar-${{ github.sha }}
+          path: jars/*.jar
+          retention-days: 7
+
+  release:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download the jar
+        uses: actions/download-artifact@v4
+        with:
+          name: jar-${{ github.sha }}
+          path: out
+
+      # The newest 30 releases are kept.
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${GITHUB_SHA::8}"
+          gh release create "$TAG" out/*.jar --target "$GITHUB_SHA" --title "$TAG" --notes "$(git log -1 --format=%s)"
+          gh release list --limit 200 --json tagName -q '.[].tagName' | tail -n +31 \
+            | xargs -r -I{} gh release delete {} --cleanup-tag -y
