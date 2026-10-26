@@ -22,6 +22,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -514,6 +515,22 @@ public class DatabaseDataStore extends DataStore
 		}
 			
 		return playerData;
+	}
+	
+	@Override
+	synchronized void deletePlayerDataFromStorage(UUID playerID)
+	{
+		try
+		{
+			this.refreshDataConnection();
+			PreparedStatement statement = this.databaseConnection.prepareStatement("DELETE FROM griefprevention_playerdata WHERE name = ?");
+			statement.setString(1, playerID.toString());
+			statement.executeUpdate();
+		}
+		catch(SQLException e)
+		{
+			GriefPrevention.AddLogEntry("Unable to delete the data of purged player " + playerID + ": " + e.getMessage(), CustomLogEntryTypes.Exception);
+		}
 	}
 	
 	//saves changes to player data.  MUST be called after you're done making changes, otherwise a reload will lose them

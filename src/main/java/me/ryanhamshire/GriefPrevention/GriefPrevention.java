@@ -1936,6 +1936,27 @@ public class GriefPrevention extends JavaPlugin
 			return true;
 		}
 		
+		//purgeplayer <uuid> [name] - console only: iManager runs it when it purges an account
+		else if(cmd.getName().equalsIgnoreCase("purgeplayer"))
+		{
+			if(player != null) return true;
+			UUID playerID;
+			try
+			{
+				playerID = UUID.fromString(args.length > 0 ? args[0] : "");
+			}
+			catch(IllegalArgumentException e)
+			{
+				return false;
+			}
+			
+			this.dataStore.purgePlayer(playerID);
+			String name = args.length > 1 ? args[1] : args[0];
+			GriefPrevention.AddLogEntry("Deleted the claims, trust and data of purged player " + name + ".", CustomLogEntryTypes.AdminActivity);
+			GriefPrevention.sendMessage(null, TextMode.Success, "Deleted the claims, trust and claim blocks of " + name + ".");
+			return true;
+		}
+		
 		//claimbook
         else if(cmd.getName().equalsIgnoreCase("claimbook"))
         {

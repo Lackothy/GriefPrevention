@@ -673,6 +673,16 @@ public class FlatFileDataStore extends DataStore
 		return playerData;
 	}
 	
+	@Override
+	void deletePlayerDataFromStorage(UUID playerID)
+	{
+		File playerFile = new File(playerDataFolderPath + File.separator + playerID.toString());
+		if(playerFile.exists() && !playerFile.delete())
+		{
+			GriefPrevention.AddLogEntry("Unable to delete the data of purged player " + playerID);
+		}
+	}
+	
 	//saves changes to player data.  MUST be called after you're done making changes, otherwise a reload will lose them
 	@Override
 	public void overrideSavePlayerData(UUID playerID, PlayerData playerData)

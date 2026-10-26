@@ -39,6 +39,9 @@ public class PlayerData
 	//the player's ID
 	public UUID playerID;
 	
+	//set when iManager purges the account (DataStore.purgePlayer): never saved again
+	public boolean purged = false;
+	
 	//the player's claims
 	private Vector<Claim> claims = null;
 	

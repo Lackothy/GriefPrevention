@@ -855,6 +855,9 @@ public abstract class DataStore
 	
 	public void asyncSavePlayerData(UUID playerID, PlayerData playerData)
 	{
+	    //a purged player's data is gone, and stays gone
+	    if(playerData.purged) return;
+	    
 	    //save everything except the ignore list
 	    this.overrideSavePlayerData(playerID, playerData);
 	    
@@ -1156,6 +1159,48 @@ public abstract class DataStore
 		}					
 	}
 
+	//deletes everything kept for a player, for an account iManager purged (/purgeplayer):
+	//their claims (as /deleteallclaims does), their trust in everyone else's claims, and
+	//their data - whoever registers the freed name next gets the same uuid, and with it all of this
+	synchronized public void purgePlayer(UUID playerID)
+	{
+		//deleting their claims saves their data, on threads of its own: none of those may write it back
+		this.getPlayerData(playerID).purged = true;
+		this.deleteClaimsForPlayer(playerID, true);
+		
+		String id = playerID.toString();
+		for(Claim claim : new ArrayList<Claim>(this.claims))
+		{
+			if(this.dropTrust(claim, id)) this.saveClaim(claim);
+		}
+		
+		this.clearCachedPlayerData(playerID);
+		this.deletePlayerDataFromStorage(playerID);
+		new File(playerDataFolderPath + File.separator + playerID + ".ignore").delete();
+	}
+	
+	//takes a player off a claim's trust and managers, and its subdivisions'; true if they were on any
+	private boolean dropTrust(Claim claim, String playerID)
+	{
+		ArrayList<String> builders = new ArrayList<String>();
+		ArrayList<String> containers = new ArrayList<String>();
+		ArrayList<String> accessors = new ArrayList<String>();
+		claim.getPermissions(builders, containers, accessors, new ArrayList<String>());
+		boolean changed = claim.managers.remove(playerID);
+		if(builders.contains(playerID) || containers.contains(playerID) || accessors.contains(playerID))
+		{
+			claim.dropPermission(playerID);
+			changed = true;
+		}
+		for(Claim child : claim.children)
+		{
+			if(this.dropTrust(child, playerID)) changed = true;
+		}
+		return changed;
+	}
+	
+	abstract void deletePlayerDataFromStorage(UUID playerID);
+	
 	//tries to resize a claim
 	//see CreateClaim() for details on return value
 	synchronized public CreateClaimResult resizeClaim(Claim claim, int newx1, int newx2, int newy1, int newy2, int newz1, int newz2, Player resizingPlayer)

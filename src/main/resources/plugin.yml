@@ -67,6 +67,9 @@ commands:
       description: Deletes all of another player's claims.
       usage: /DeleteAllClaims <player>
       permission: griefprevention.deleteclaims
+   purgeplayer:
+      description: Console only - deletes a purged player's claims, trust and data (iManager runs it).
+      usage: /purgeplayer <uuid> [name]
    adminclaims:
       description: Switches the shovel tool to administrative claims mode.
       usage: /AdminClaims
